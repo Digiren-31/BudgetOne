@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "BudgetOne",
+    "slug": "budgetone",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#4F46E5"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.budgetone.app",
+      "infoPlist": {
+        "NSUserNotificationsUsageDescription": "BudgetOne needs notification permission to alert you about detected expenses."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#4F46E5"
+      },
+      "package": "com.budgetone.app",
+      "permissions": [
+        "android.permission.RECEIVE_SMS",
+        "android.permission.READ_SMS",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "plugins": [
+      "expo-notifications",
+      [
+        "expo-sqlite",
+        {
+          "enableFTS": true
+        }
+      ],
+      "./plugins/withSmsReceiver",
+      "./plugins/withSmsPackageRegistration",
+      "./plugins/withNotificationListener",
+      "./plugins/withNotificationPackageRegistration",
+      "expo-font"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "dc8446f0-06e6-4dc9-aff9-05815c322d76"
+      }
+    }
+  }
+}
