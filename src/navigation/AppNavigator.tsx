@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../context/ThemeContext';
+import { useOnboarding } from '../context/OnboardingContext';
 import {
   TodayScreen,
   InsightsScreen,
@@ -17,9 +18,24 @@ import {
   SelectCurrencyScreen,
   CategoryDetailScreen,
   NotificationSettingsScreen,
+  UntrackedExpensesScreen,
 } from '../screens';
+import {
+  WelcomeScreen,
+  SmsSetupScreen,
+  PermissionsScreen,
+} from '../screens/onboarding';
 
 // Type definitions for navigation
+
+// Onboarding stack
+export type OnboardingStackParamList = {
+  Welcome: undefined;
+  SmsSetup: undefined;
+  Permissions: undefined;
+};
+
+// Main app stack
 export type RootStackParamList = {
   MainTabs: undefined;
   AddExpense: {
@@ -32,6 +48,7 @@ export type RootStackParamList = {
   ManageCategories: undefined;
   SmsOnboarding: undefined;
   NotificationSettings: undefined;
+  UntrackedExpenses: undefined;
   About: undefined;
   EditProfile: undefined;
   SelectCurrency: undefined;
@@ -44,8 +61,46 @@ export type TabParamList = {
   Settings: undefined;
 };
 
+const OnboardingStack = createNativeStackNavigator<OnboardingStackParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
+
+// Onboarding Navigator
+export function OnboardingNavigator() {
+  const { colors } = useTheme();
+  const { currentStep } = useOnboarding();
+
+  const screenOptions = {
+    headerShown: false,
+    contentStyle: {
+      backgroundColor: colors.background,
+    },
+    animation: 'slide_from_right' as const,
+  };
+
+  // Determine initial route based on current step
+  const getInitialRoute = (): keyof OnboardingStackParamList => {
+    switch (currentStep) {
+      case 'sms_setup':
+        return 'SmsSetup';
+      case 'permissions':
+        return 'Permissions';
+      default:
+        return 'Welcome';
+    }
+  };
+
+  return (
+    <OnboardingStack.Navigator
+      initialRouteName={getInitialRoute()}
+      screenOptions={screenOptions}
+    >
+      <OnboardingStack.Screen name="Welcome" component={WelcomeScreen} />
+      <OnboardingStack.Screen name="SmsSetup" component={SmsSetupScreen} />
+      <OnboardingStack.Screen name="Permissions" component={PermissionsScreen} />
+    </OnboardingStack.Navigator>
+  );
+}
 
 function TabNavigator() {
   const { colors } = useTheme();
@@ -154,6 +209,13 @@ export function AppNavigator() {
         component={NotificationSettingsScreen}
         options={{
           title: 'Notification Settings',
+        }}
+      />
+      <Stack.Screen
+        name="UntrackedExpenses"
+        component={UntrackedExpensesScreen}
+        options={{
+          title: 'Untracked Expenses',
         }}
       />
       <Stack.Screen

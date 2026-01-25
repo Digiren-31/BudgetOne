@@ -7,7 +7,7 @@ const { withMainApplication } = require('@expo/config-plugins');
 module.exports = function withNotificationPackageRegistration(config) {
   return withMainApplication(config, async (config) => {
     const mainApplication = config.modResults;
-    const packageName = config.android?.package || 'com.budgetone.app';
+    const packageName = config.android?.package || 'com.chillar.app';
     
     // Add import for NotificationListenerPackage
     const importStatement = `import ${packageName}.NotificationListenerPackage`;

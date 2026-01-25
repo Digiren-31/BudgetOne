@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Switch,
-  Image,
   Alert,
   Platform,
 } from 'react-native';
@@ -17,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { useTheme } from '../context/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
-import { Card, ListItem, SectionHeader } from '../components';
+import { Card, ListItem, SectionHeader, ProfileAvatar } from '../components';
 import { CURRENCIES, Currency } from '../constants/currencies';
 import { getAllSmsPatterns } from '../services/database';
 import { smsService } from '../services/smsService';
@@ -88,8 +87,8 @@ export function SettingsScreen() {
       // Already enabled, show info
       Alert.alert(
         'Notification Access Enabled',
-        'BudgetOne is reading bank notifications to detect expenses automatically.\n\n' +
-        'To disable, go to Android Settings > Notification Access and turn off BudgetOne.',
+        'Chillar is reading bank notifications to detect expenses automatically.\n\n' +
+        'To disable, go to Android Settings > Notification Access and turn off Chillar.',
         [{ text: 'OK' }]
       );
     } else {
@@ -167,13 +166,7 @@ export function SettingsScreen() {
           style={styles.profileRow}
           onPress={() => navigation.navigate('EditProfile')}
         >
-          <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-            {profile.photoUri ? (
-              <Image source={{ uri: profile.photoUri }} style={styles.avatarImage} />
-            ) : (
-              <Ionicons name="person" size={32} color="#FFFFFF" />
-            )}
-          </View>
+          <ProfileAvatar photoUri={profile.photoUri} size={64} />
           <View style={styles.profileInfo}>
             <Text style={[styles.profileName, { color: colors.text }]}>
               {profile.name || 'Set up your profile'}
@@ -356,8 +349,8 @@ export function SettingsScreen() {
               </Text>
               <Text style={[styles.smsDescription, { color: colors.textSecondary }]}>
                 {notificationAccessEnabled
-                  ? 'BudgetOne is monitoring bank notifications in the background to detect expenses automatically.'
-                  : 'Enable notification access to let BudgetOne detect bank transaction notifications in the background.'}
+                  ? 'Chillar is monitoring bank notifications in the background to detect expenses automatically.'
+                  : 'Enable notification access to let Chillar detect bank transaction notifications in the background.'}
               </Text>
 
               <TouchableOpacity
@@ -379,7 +372,7 @@ export function SettingsScreen() {
 
               {!notificationAccessEnabled && (
                 <Text style={[styles.smsDescription, { color: colors.textTertiary, fontSize: FontSizes.xs, marginTop: Spacing.sm }]}>
-                  Note: You'll need to enable BudgetOne in Android Settings → Notification Access
+                  Note: You'll need to enable Chillar in Android Settings → Notification Access
                 </Text>
               )}
             </View>
@@ -391,7 +384,7 @@ export function SettingsScreen() {
       <SectionHeader title="About" />
       <Card style={[styles.section, { marginBottom: Spacing.xxl }]}>
         <ListItem
-          title="About BudgetOne"
+          title="About Chillar"
           subtitle="Version 1.0.0"
           leftIcon="information-circle"
           leftIconColor={colors.info}

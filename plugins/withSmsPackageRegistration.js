@@ -9,7 +9,7 @@ const { withMainApplication } = require('@expo/config-plugins');
 function withSmsPackageRegistration(config) {
   return withMainApplication(config, (config) => {
     let contents = config.modResults.contents;
-    const packageName = config.android?.package || 'com.budgetone.app';
+    const packageName = config.android?.package || 'com.chillar.app';
 
     // Add import statement if not present
     const importStatement = `import ${packageName}.SmsReceiverPackage`;

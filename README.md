@@ -1,4 +1,4 @@
-# BudgetOne - Personal Budget & Expense Tracker
+# Chillar - Personal Budget & Expense Tracker
 
 A cross-platform mobile app for Android and iOS that helps you track expenses with smart SMS detection.
 
@@ -39,7 +39,7 @@ A cross-platform mobile app for Android and iOS that helps you track expenses wi
 
 1. Clone the repository and navigate to the project:
 ```bash
-cd BudgetOne
+cd Chillar
 ```
 
 2. Install dependencies:
@@ -64,7 +64,7 @@ npm run android
 ## Project Structure
 
 ```
-BudgetOne/
+Chillar/
 ├── App.tsx                 # Main app entry point
 ├── src/
 │   ├── components/         # Reusable UI components

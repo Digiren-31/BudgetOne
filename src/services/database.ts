@@ -5,7 +5,7 @@ import { DEFAULT_CATEGORIES } from '../constants/categories';
 let db: SQLite.SQLiteDatabase | null = null;
 
 export async function initDatabase(): Promise<void> {
-  db = await SQLite.openDatabaseAsync('budgetone.db');
+  db = await SQLite.openDatabaseAsync('chillar.db');
 
   // Create tables
   await db.execAsync(`
@@ -474,6 +474,15 @@ export async function getPendingSuggestions(): Promise<ExpenseSuggestion[]> {
     "SELECT * FROM expense_suggestions WHERE status = 'pending' ORDER BY createdAt DESC"
   );
   return rows;
+}
+
+export async function getPendingSuggestionsCount(): Promise<number> {
+  if (!db) throw new Error('Database not initialized');
+
+  const result = await db.getAllAsync<{ count: number }>(
+    "SELECT COUNT(*) as count FROM expense_suggestions WHERE status = 'pending'"
+  );
+  return result[0]?.count ?? 0;
 }
 
 export async function createExpenseSuggestion(suggestion: ExpenseSuggestion): Promise<void> {

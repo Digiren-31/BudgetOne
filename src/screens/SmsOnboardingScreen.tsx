@@ -137,7 +137,7 @@ export function SmsOnboardingScreen() {
     if (notificationAccessEnabled) {
       Alert.alert(
         'Notification Access',
-        'To disable notification access, go to Android Settings → Notification Access and turn off BudgetOne.',
+        'To disable notification access, go to Android Settings → Notification Access and turn off Chillar.',
         [{ text: 'OK' }]
       );
     } else {
@@ -818,7 +818,7 @@ export function SmsOnboardingScreen() {
             accessible={true}
             accessibilityLabel="SMS detection information"
           >
-            Paste a bank SMS to teach BudgetOne its format. The AI will create a pattern to detect similar messages automatically.
+            Paste a bank SMS to teach Chillar its format. The AI will create a pattern to detect similar messages automatically.
           </Text>
         </Card>
       </TouchableOpacity>

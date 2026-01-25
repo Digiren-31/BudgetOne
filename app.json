@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "BudgetOne",
+    "name": "Chillar",
     "slug": "budgetone",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -16,9 +16,9 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.budgetone.app",
+      "bundleIdentifier": "com.chillar.app",
       "infoPlist": {
-        "NSUserNotificationsUsageDescription": "BudgetOne needs notification permission to alert you about detected expenses."
+        "NSUserNotificationsUsageDescription": "Chillar needs notification permission to alert you about detected expenses."
       }
     },
     "android": {
@@ -26,7 +26,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#4F46E5"
       },
-      "package": "com.budgetone.app",
+      "package": "com.chillar.app",
       "permissions": [
         "android.permission.RECEIVE_SMS",
         "android.permission.READ_SMS",
@@ -34,7 +34,13 @@
       ]
     },
     "plugins": [
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#4F46E5"
+        }
+      ],
       [
         "expo-sqlite",
         {
@@ -51,6 +57,7 @@
       "eas": {
         "projectId": "dc8446f0-06e6-4dc9-aff9-05815c322d76"
       }
-    }
+    },
+    "owner": "lessgo-india"
   }
 }

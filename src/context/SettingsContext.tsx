@@ -41,7 +41,7 @@ interface SettingsContextType {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
 
-const SETTINGS_STORAGE_KEY = '@budgetone_settings';
+const SETTINGS_STORAGE_KEY = '@chillar_settings';
 
 interface StoredSettings {
   currencyCode: string;

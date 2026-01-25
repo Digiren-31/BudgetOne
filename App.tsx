@@ -6,15 +6,18 @@ import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 
 import { ThemeProvider, useTheme } from './src/context/ThemeContext';
 import { SettingsProvider } from './src/context/SettingsContext';
-import { AppNavigator } from './src/navigation/AppNavigator';
+import { OnboardingProvider, useOnboarding } from './src/context/OnboardingContext';
+import { AppNavigator, OnboardingNavigator } from './src/navigation/AppNavigator';
 import { initDatabase } from './src/services/database';
 import { notificationService } from './src/services/notificationService';
 import { smsService } from './src/services/smsService';
 import { notificationListenerService } from './src/services/notificationListenerService';
 import { useNotificationHandler } from './src/hooks/useNotificationHandler';
+import { useNotificationSettingsSync } from './src/hooks/useNotificationSettingsSync';
 
 function AppContent() {
   const { colors, isDark } = useTheme();
+  const { isOnboardingComplete, isLoading: isOnboardingLoading } = useOnboarding();
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -62,7 +65,7 @@ function AppContent() {
     );
   }
 
-  if (!isReady) {
+  if (!isReady || isOnboardingLoading) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -89,8 +92,14 @@ function AppContent() {
           },
         }}
       >
-        <NotificationHandler />
-        <AppNavigator />
+        {isOnboardingComplete ? (
+          <>
+            <NotificationHandler />
+            <AppNavigator />
+          </>
+        ) : (
+          <OnboardingNavigator />
+        )}
       </NavigationContainer>
     </>
   );
@@ -99,6 +108,7 @@ function AppContent() {
 // Separate component to use navigation hook
 function NotificationHandler() {
   useNotificationHandler();
+  useNotificationSettingsSync();
   return null;
 }
 
@@ -107,7 +117,9 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <SettingsProvider>
-          <AppContent />
+          <OnboardingProvider>
+            <AppContent />
+          </OnboardingProvider>
         </SettingsProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

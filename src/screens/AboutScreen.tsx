@@ -11,16 +11,16 @@ export function AboutScreen() {
 
   const handlePrivacyPolicy = () => {
     // Placeholder - would open a web link
-    Linking.openURL('https://budgetone.app/privacy');
+    Linking.openURL('https://chillar.app/privacy');
   };
 
   const handleTerms = () => {
     // Placeholder - would open a web link
-    Linking.openURL('https://budgetone.app/terms');
+    Linking.openURL('https://chillar.app/terms');
   };
 
   const handleSupport = () => {
-    Linking.openURL('mailto:support@budgetone.app');
+    Linking.openURL('mailto:support@chillar.app');
   };
 
   return (
@@ -30,7 +30,7 @@ export function AboutScreen() {
         <View style={[styles.appIcon, { backgroundColor: colors.primary }]}>
           <Ionicons name="wallet" size={48} color="#FFFFFF" />
         </View>
-        <Text style={[styles.appName, { color: colors.text }]}>BudgetOne</Text>
+        <Text style={[styles.appName, { color: colors.text }]}>Chillar</Text>
         <Text style={[styles.version, { color: colors.textSecondary }]}>Version 1.0.0</Text>
         <Text style={[styles.tagline, { color: colors.textSecondary }]}>
           Smart expense tracking with SMS detection
@@ -135,7 +135,7 @@ export function AboutScreen() {
             Your Data, Your Device
           </Text>
           <Text style={[styles.privacyText, { color: colors.textSecondary }]}>
-            BudgetOne stores all your expense data locally on your device. 
+            Chillar stores all your expense data locally on your device. 
             We only access SMS messages that you explicitly choose for pattern recognition.
             {'\n\n'}
             SMS content is only sent to our AI service during pattern setup to help 

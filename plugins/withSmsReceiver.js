@@ -64,7 +64,7 @@ function withSmsReceiverNativeCode(config) {
     'android',
     async (config) => {
       const projectRoot = config.modRequest.projectRoot;
-      const packageName = config.android?.package || 'com.budgetone.app';
+      const packageName = config.android?.package || 'com.chillar.app';
       const packagePath = packageName.replace(/\./g, '/');
       
       const androidSrcPath = path.join(

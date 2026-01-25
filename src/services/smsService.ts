@@ -154,7 +154,7 @@ class SmsService {
         {
           title: 'SMS Notification Permission',
           message:
-            'BudgetOne needs permission to detect new SMS messages in real-time ' +
+            'Chillar needs permission to detect new SMS messages in real-time ' +
             'to notify you about expenses as they happen.',
           buttonNeutral: 'Ask Me Later',
           buttonNegative: 'Cancel',

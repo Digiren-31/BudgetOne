@@ -17,8 +17,8 @@ import { format } from 'date-fns';
 
 import { useTheme } from '../context/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
-import { ExpenseItem, ExpenseSummaryCard, FloatingButton, EmptyState } from '../components';
-import { getTodayExpenses, getActiveCategories } from '../services/database';
+import { ExpenseItem, ExpenseSummaryCard, FloatingButton, EmptyState, UntrackedExpensesBadge } from '../components';
+import { getTodayExpenses, getActiveCategories, getPendingSuggestionsCount } from '../services/database';
 import { Expense, Category } from '../models/types';
 import { formatCurrency } from '../constants/currencies';
 import { Spacing, FontSizes, BorderRadius } from '../constants/theme';
@@ -27,6 +27,7 @@ type RootStackParamList = {
   TodayMain: undefined;
   AddExpense: { expense?: Expense };
   EditExpense: { expenseId: string };
+  UntrackedExpenses: undefined;
 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -41,15 +42,18 @@ export function TodayScreen() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [untrackedCount, setUntrackedCount] = useState(0);
 
   const loadData = useCallback(async () => {
     try {
-      const [expensesData, categoriesData] = await Promise.all([
+      const [expensesData, categoriesData, pendingCount] = await Promise.all([
         getTodayExpenses(),
         getActiveCategories(),
+        getPendingSuggestionsCount(),
       ]);
       setExpenses(expensesData);
       setCategories(categoriesData);
+      setUntrackedCount(pendingCount);
       setLastUpdated(new Date());
     } catch (error) {
       console.error('Failed to load today data:', error);
@@ -160,13 +164,22 @@ export function TodayScreen() {
     );
   };
 
+  const handleUntrackedPress = () => {
+    navigation.navigate('UntrackedExpenses');
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <View style={styles.header}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Today</Text>
-        <Text style={[styles.headerDate, { color: colors.textSecondary }]}>
-          {format(new Date(), 'EEEE, MMMM d')}
-        </Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>Today</Text>
+            <Text style={[styles.headerDate, { color: colors.textSecondary }]}>
+              {format(new Date(), 'EEEE, MMMM d')}
+            </Text>
+          </View>
+          <UntrackedExpensesBadge count={untrackedCount} onPress={handleUntrackedPress} />
+        </View>
       </View>
 
       <FlatList
@@ -199,6 +212,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     paddingTop: Spacing.lg,
     paddingBottom: Spacing.sm,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   headerTitle: {
     fontSize: FontSizes.xxxl,

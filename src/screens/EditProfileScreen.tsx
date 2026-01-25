@@ -16,7 +16,7 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { useTheme } from '../context/ThemeContext';
 import { useSettings } from '../context/SettingsContext';
-import { Card } from '../components';
+import { Card, ProfileAvatar } from '../components';
 import { Spacing, FontSizes, BorderRadius } from '../constants/theme';
 
 export function EditProfileScreen() {
@@ -71,17 +71,13 @@ export function EditProfileScreen() {
             style={[styles.photoContainer, { backgroundColor: colors.primary }]}
             onPress={handlePickImage}
           >
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={styles.photo} />
-            ) : (
-              <Ionicons name="person" size={64} color="#FFFFFF" />
-            )}
+            <ProfileAvatar photoUri={photoUri} size={120} />
             <View style={[styles.editBadge, { backgroundColor: colors.surface }]}>
               <Ionicons name="camera" size={16} color={colors.primary} />
             </View>
           </TouchableOpacity>
           
-          {photoUri && (
+          {photoUri && !photoUri.startsWith('emoji:') && (
             <TouchableOpacity onPress={handleRemovePhoto}>
               <Text style={[styles.removePhoto, { color: colors.error }]}>
                 Remove Photo

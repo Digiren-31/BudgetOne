@@ -114,8 +114,8 @@ class NotificationListenerService {
     return new Promise((resolve) => {
       Alert.alert(
         'Notification Access Required',
-        'BudgetOne needs notification access to automatically detect bank transaction notifications.\n\n' +
-        'In the next screen, find "BudgetOne" in the list and enable notification access.',
+        'Chillar needs notification access to automatically detect bank transaction notifications.\n\n' +
+        'In the next screen, find "Chillar" in the list and enable notification access.',
         [
           {
             text: 'Cancel',

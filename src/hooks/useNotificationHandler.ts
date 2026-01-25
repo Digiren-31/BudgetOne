@@ -29,7 +29,7 @@ export function useNotificationHandler() {
         const amount = data.amount as number;
         const dateTime = data.dateTime as string;
 
-        // Map action to category
+        // Map action to category - support both legacy and dynamic category actions
         const categoryMap: { [key: string]: string } = {
           [NOTIFICATION_ACTIONS.FOOD]: 'food',
           [NOTIFICATION_ACTIONS.TRAVEL]: 'travel',
@@ -38,7 +38,11 @@ export function useNotificationHandler() {
           [NOTIFICATION_ACTIONS.OTHER]: 'misc',
         };
 
-        const categoryId = categoryMap[actionIdentifier];
+        // Check for dynamic category action (e.g., 'category_food', 'category_travel')
+        let categoryId = categoryMap[actionIdentifier];
+        if (!categoryId && actionIdentifier.startsWith(NOTIFICATION_ACTIONS.CATEGORY_PREFIX)) {
+          categoryId = actionIdentifier.replace(NOTIFICATION_ACTIONS.CATEGORY_PREFIX, '');
+        }
 
         if (categoryId) {
           // Quick action selected - create expense directly

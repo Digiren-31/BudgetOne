@@ -171,6 +171,9 @@ class NotificationService {
         lightColor: '#4F46E5',
         sound: undefined,
       });
+
+      // Set up notification category with action buttons for Android
+      await Notifications.setNotificationCategoryAsync('expense_detected', quickPickActions);
     }
 
     this.isInitialized = true;

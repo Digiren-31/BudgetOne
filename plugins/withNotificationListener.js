@@ -34,7 +34,7 @@ function withNotificationListenerManifest(config) {
       mainApplication.service.push({
         $: {
           'android:name': '.BudgetNotificationListener',
-          'android:label': 'BudgetOne Notification Listener',
+          'android:label': 'Chillar Notification Listener',
           'android:permission': 'android.permission.BIND_NOTIFICATION_LISTENER_SERVICE',
           'android:exported': 'false',
         },
@@ -64,7 +64,7 @@ function withNotificationListenerNativeCode(config) {
     'android',
     async (config) => {
       const projectRoot = config.modRequest.projectRoot;
-      const packageName = config.android?.package || 'com.budgetone.app';
+      const packageName = config.android?.package || 'com.chillar.app';
       const packagePath = packageName.replace(/\./g, '/');
       
       const androidSrcPath = path.join(
@@ -109,9 +109,9 @@ class BudgetNotificationListener : NotificationListenerService() {
     
     companion object {
         private const val TAG = "BudgetNotificationListener"
-        private const val PREFS_NAME = "BudgetOneExpenses"
+        private const val PREFS_NAME = "ChillarExpenses"
         private const val PENDING_EXPENSES_KEY = "pending_expenses"
-        private const val CHANNEL_ID = "budget_one_expenses"
+        private const val CHANNEL_ID = "chillar_expenses"
         private const val NOTIFICATION_ID = 1001
         
         // Static reference to the module for sending events (when app is running)
@@ -277,25 +277,71 @@ class BudgetNotificationListener : NotificationListenerService() {
     
     private fun showExpenseNotification(amount: Double, merchant: String) {
         try {
-            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            // Create intent for main action (open app)
+            val launchIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                putExtra("expense_amount", amount)
+                putExtra("expense_merchant", merchant)
+                putExtra("action", "view")
+            }
             val pendingIntent = PendingIntent.getActivity(
-                this, 0, intent,
+                this, 0, launchIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
             
+            // Create intents for quick action buttons
+            val foodIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                putExtra("expense_amount", amount)
+                putExtra("expense_merchant", merchant)
+                putExtra("action", "category_food")
+            }
+            val foodPendingIntent = PendingIntent.getActivity(
+                this, 1, foodIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            val shoppingIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                putExtra("expense_amount", amount)
+                putExtra("expense_merchant", merchant)
+                putExtra("action", "category_shopping")
+            }
+            val shoppingPendingIntent = PendingIntent.getActivity(
+                this, 2, shoppingIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            val otherIntent = packageManager.getLaunchIntentForPackage(packageName)?.apply {
+                putExtra("expense_amount", amount)
+                putExtra("expense_merchant", merchant)
+                putExtra("action", "category_other")
+            }
+            val otherPendingIntent = PendingIntent.getActivity(
+                this, 3, otherIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            // Get the app's notification icon resource
+            val iconResId = resources.getIdentifier("notification_icon", "drawable", packageName)
+            val finalIconId = if (iconResId != 0) iconResId else resources.getIdentifier("ic_launcher", "mipmap", packageName)
+            
             val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setSmallIcon(if (finalIconId != 0) finalIconId else android.R.drawable.ic_dialog_info)
                 .setContentTitle("💰 New expense detected")
                 .setContentText("₹\${"%.2f".format(amount)} at \$merchant")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setStyle(NotificationCompat.BigTextStyle()
+                    .bigText("₹\${"%.2f".format(amount)} at \$merchant\\n\\nTap a category to save this expense quickly:"))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setContentIntent(pendingIntent)
                 .setAutoCancel(true)
+                .setColor(0xFF4F46E5.toInt())
+                .addAction(0, "🍔 Food", foodPendingIntent)
+                .addAction(0, "🛍️ Shopping", shoppingPendingIntent)
+                .addAction(0, "📝 Other", otherPendingIntent)
                 .build()
             
             val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.notify(System.currentTimeMillis().toInt(), notification)
             
-            Log.d(TAG, "Showed expense notification")
+            Log.d(TAG, "Showed expense notification with quick actions")
         } catch (e: Exception) {
             Log.e(TAG, "Error showing notification", e)
         }
@@ -344,7 +390,7 @@ class NotificationListenerModule(reactContext: ReactApplicationContext) :
         private const val TAG = "NotificationListenerModule"
         private const val MODULE_NAME = "NotificationListener"
         private const val NOTIFICATION_RECEIVED_EVENT = "onNotificationReceived"
-        private const val PREFS_NAME = "BudgetOneExpenses"
+        private const val PREFS_NAME = "ChillarExpenses"
         private const val PENDING_EXPENSES_KEY = "pending_expenses"
     }
 
