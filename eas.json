@@ -10,7 +10,7 @@
       "env": {
         "EXPO_PUBLIC_AI_PROVIDER": "azure",
         "EXPO_PUBLIC_AI_API_URL": "https://azure-foundry-priytosh.services.ai.azure.com",
-        "EXPO_PUBLIC_OPENAI_API_KEY": "@eas/azure-openai-api-key",
+        "EXPO_PUBLIC_OPENAI_API_KEY": "@eas/AZURE_OPENAI_API_KEY",
         "EXPO_PUBLIC_AZURE_DEPLOYMENT_NAME": "gpt-4.1",
         "EXPO_PUBLIC_AZURE_API_VERSION": "2024-10-21"
       }
@@ -23,7 +23,7 @@
       "env": {
         "EXPO_PUBLIC_AI_PROVIDER": "azure",
         "EXPO_PUBLIC_AI_API_URL": "https://azure-foundry-priytosh.services.ai.azure.com",
-        "EXPO_PUBLIC_OPENAI_API_KEY": "@eas/azure-openai-api-key",
+        "EXPO_PUBLIC_OPENAI_API_KEY": "@eas/AZURE_OPENAI_API_KEY",
         "EXPO_PUBLIC_AZURE_DEPLOYMENT_NAME": "gpt-4.1",
         "EXPO_PUBLIC_AZURE_API_VERSION": "2024-10-21"
       }
@@ -36,7 +36,7 @@
       "env": {
         "EXPO_PUBLIC_AI_PROVIDER": "azure",
         "EXPO_PUBLIC_AI_API_URL": "https://azure-foundry-priytosh.services.ai.azure.com",
-        "EXPO_PUBLIC_OPENAI_API_KEY": "@eas/azure-openai-api-key",
+        "EXPO_PUBLIC_OPENAI_API_KEY": "@eas/AZURE_OPENAI_API_KEY",
         "EXPO_PUBLIC_AZURE_DEPLOYMENT_NAME": "gpt-4.1",
         "EXPO_PUBLIC_AZURE_API_VERSION": "2024-10-21"
       }
