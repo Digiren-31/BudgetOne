@@ -64,6 +64,12 @@ export function SmsOnboardingScreen() {
   const [notificationAccessEnabled, setNotificationAccessEnabled] = useState(false);
   const [isNotificationListenerAvailable, setIsNotificationListenerAvailable] = useState(false);
   
+  // Dev mode test state
+  const [showDevTestModal, setShowDevTestModal] = useState(false);
+  const [pendingExpenses, setPendingExpenses] = useState<any[]>([]);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const [isTestingNotification, setIsTestingNotification] = useState(false);
+  
   // Ref to track if component is mounted (prevent state updates after unmount)
   const isMountedRef = useRef(true);
 
@@ -1150,9 +1156,165 @@ export function SmsOnboardingScreen() {
       {devModeEnabled && (
         <View style={[styles.devModeBar, { backgroundColor: colors.warning }]}>
           <Ionicons name="bug" size={16} color="#000" />
-          <Text style={styles.devModeText}>Dev Mode Enabled - Regex details visible</Text>
+          <Text style={styles.devModeText}>Dev Mode Enabled</Text>
+          <TouchableOpacity
+            style={styles.devModeTestButton}
+            onPress={() => setShowDevTestModal(true)}
+          >
+            <Text style={styles.devModeTestButtonText}>Test Reading</Text>
+          </TouchableOpacity>
         </View>
       )}
+
+      {/* Dev Mode Test Modal */}
+      <Modal
+        visible={showDevTestModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowDevTestModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: colors.surface }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: colors.border }]}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>🔧 Notification Reading Test</Text>
+              <TouchableOpacity onPress={() => setShowDevTestModal(false)}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.devTestContent}>
+              {/* Status Section */}
+              <View style={[styles.devTestSection, { backgroundColor: colors.background }]}>
+                <Text style={[styles.devTestSectionTitle, { color: colors.text }]}>📊 Status</Text>
+                <View style={styles.devTestRow}>
+                  <Text style={[styles.devTestLabel, { color: colors.textSecondary }]}>Native Module Available:</Text>
+                  <Text style={[styles.devTestValue, { color: isNotificationListenerAvailable ? colors.success : colors.error }]}>
+                    {isNotificationListenerAvailable ? '✓ Yes' : '✗ No'}
+                  </Text>
+                </View>
+                <View style={styles.devTestRow}>
+                  <Text style={[styles.devTestLabel, { color: colors.textSecondary }]}>Notification Access:</Text>
+                  <Text style={[styles.devTestValue, { color: notificationAccessEnabled ? colors.success : colors.error }]}>
+                    {notificationAccessEnabled ? '✓ Enabled' : '✗ Disabled'}
+                  </Text>
+                </View>
+              </View>
+
+              {/* Test Actions */}
+              <View style={[styles.devTestSection, { backgroundColor: colors.background }]}>
+                <Text style={[styles.devTestSectionTitle, { color: colors.text }]}>🧪 Test Actions</Text>
+                
+                <TouchableOpacity
+                  style={[styles.devTestButton, { backgroundColor: colors.primary }]}
+                  onPress={async () => {
+                    setIsTestingNotification(true);
+                    setTestResult(null);
+                    try {
+                      const available = notificationListenerService.isAvailable();
+                      const enabled = available ? await notificationListenerService.isEnabled() : false;
+                      const expenses = available ? await notificationListenerService.getPendingExpenses() : [];
+                      setPendingExpenses(expenses);
+                      setTestResult(
+                        `Module Available: ${available}\n` +
+                        `Access Enabled: ${enabled}\n` +
+                        `Pending Expenses: ${expenses.length}\n\n` +
+                        `If Access is Enabled but no expenses detected:\n` +
+                        `1. Send yourself a test bank SMS\n` +
+                        `2. Or use another phone to send: "Rs.500 debited from HDFC"\n` +
+                        `3. Wait for notification, then check again`
+                      );
+                    } catch (e: any) {
+                      setTestResult(`Error: ${e.message}`);
+                    }
+                    setIsTestingNotification(false);
+                  }}
+                  disabled={isTestingNotification}
+                >
+                  {isTestingNotification ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.devTestButtonText}>Check Notification Reading Status</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.devTestButton, { backgroundColor: colors.secondary, marginTop: Spacing.sm }]}
+                  onPress={async () => {
+                    try {
+                      const processed = await notificationListenerService.processPendingExpenses();
+                      Alert.alert('Processed', `Processed ${processed} pending expenses`);
+                      const expenses = await notificationListenerService.getPendingExpenses();
+                      setPendingExpenses(expenses);
+                    } catch (e: any) {
+                      Alert.alert('Error', e.message);
+                    }
+                  }}
+                >
+                  <Text style={styles.devTestButtonText}>Process Pending Expenses</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.devTestButton, { backgroundColor: colors.error, marginTop: Spacing.sm }]}
+                  onPress={async () => {
+                    try {
+                      await notificationListenerService.clearPendingExpenses();
+                      setPendingExpenses([]);
+                      Alert.alert('Cleared', 'All pending expenses cleared');
+                    } catch (e: any) {
+                      Alert.alert('Error', e.message);
+                    }
+                  }}
+                >
+                  <Text style={styles.devTestButtonText}>Clear Pending Expenses</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Test Result */}
+              {testResult && (
+                <View style={[styles.devTestSection, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.devTestSectionTitle, { color: colors.text }]}>📝 Result</Text>
+                  <Text style={[styles.devTestResultText, { color: colors.text }]}>{testResult}</Text>
+                </View>
+              )}
+
+              {/* Pending Expenses */}
+              {pendingExpenses.length > 0 && (
+                <View style={[styles.devTestSection, { backgroundColor: colors.background }]}>
+                  <Text style={[styles.devTestSectionTitle, { color: colors.text }]}>
+                    💰 Pending Expenses ({pendingExpenses.length})
+                  </Text>
+                  {pendingExpenses.map((expense, index) => (
+                    <View key={expense.id || index} style={[styles.devTestExpenseItem, { borderColor: colors.border }]}>
+                      <Text style={[styles.devTestExpenseAmount, { color: colors.primary }]}>₹{expense.amount}</Text>
+                      <Text style={[styles.devTestExpenseMerchant, { color: colors.text }]}>{expense.merchant}</Text>
+                      <Text style={[styles.devTestExpenseText, { color: colors.textSecondary }]} numberOfLines={2}>
+                        {expense.rawText}
+                      </Text>
+                      <Text style={[styles.devTestExpenseTime, { color: colors.textSecondary }]}>
+                        {new Date(expense.timestamp).toLocaleString()}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Instructions */}
+              <View style={[styles.devTestSection, { backgroundColor: colors.background }]}>
+                <Text style={[styles.devTestSectionTitle, { color: colors.text }]}>📖 How to Test</Text>
+                <Text style={[styles.devTestInstructions, { color: colors.textSecondary }]}>
+                  1. Ensure "Notification Access" is enabled above{"\n"}
+                  2. Close this app completely{"\n"}
+                  3. Send a test bank SMS from another phone:{"\n"}
+                     "Rs.500 debited from HDFC Bank"  {"\n"}
+                  4. You should see a "💰 New expense detected" notification{"\n"}
+                  5. Open this app and check pending expenses{"\n\n"}
+                  ⚠️ Note: The app must be installed from the latest build with notification listener enabled.
+                </Text>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1579,5 +1741,86 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xs,
     fontWeight: '600',
     color: '#000',
+    flex: 1,
+  },
+  devModeTestButton: {
+    backgroundColor: '#000',
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.sm,
+  },
+  devModeTestButtonText: {
+    color: '#fff',
+    fontSize: FontSizes.xs,
+    fontWeight: '600',
+  },
+  devTestContent: {
+    flex: 1,
+    padding: Spacing.md,
+  },
+  devTestSection: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    marginBottom: Spacing.md,
+  },
+  devTestSectionTitle: {
+    fontSize: FontSizes.md,
+    fontWeight: '600',
+    marginBottom: Spacing.sm,
+  },
+  devTestRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: Spacing.xs,
+  },
+  devTestLabel: {
+    fontSize: FontSizes.sm,
+  },
+  devTestValue: {
+    fontSize: FontSizes.sm,
+    fontWeight: '600',
+  },
+  devTestButton: {
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    alignItems: 'center',
+  },
+  devTestButtonText: {
+    color: '#fff',
+    fontSize: FontSizes.md,
+    fontWeight: '600',
+  },
+  devTestResultText: {
+    fontSize: FontSizes.sm,
+    lineHeight: 20,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  devTestExpenseItem: {
+    borderWidth: 1,
+    borderRadius: BorderRadius.sm,
+    padding: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  devTestExpenseAmount: {
+    fontSize: FontSizes.lg,
+    fontWeight: '700',
+  },
+  devTestExpenseMerchant: {
+    fontSize: FontSizes.md,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  devTestExpenseText: {
+    fontSize: FontSizes.xs,
+    marginTop: Spacing.xs,
+  },
+  devTestExpenseTime: {
+    fontSize: FontSizes.xs,
+    marginTop: Spacing.xs,
+  },
+  devTestInstructions: {
+    fontSize: FontSizes.sm,
+    lineHeight: 22,
   },
 });

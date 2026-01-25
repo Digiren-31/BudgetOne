@@ -83,41 +83,78 @@ function withNotificationListenerNativeCode(config) {
       }
 
       // Create BudgetNotificationListener.kt - NotificationListenerService
+      // Enhanced version that works fully in background without React Native
       const notificationListenerCode = `package ${packageName}
 
 import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.regex.Pattern
+import java.util.UUID
 
 class BudgetNotificationListener : NotificationListenerService() {
     
     companion object {
         private const val TAG = "BudgetNotificationListener"
+        private const val PREFS_NAME = "BudgetOneExpenses"
+        private const val PENDING_EXPENSES_KEY = "pending_expenses"
+        private const val CHANNEL_ID = "budget_one_expenses"
+        private const val NOTIFICATION_ID = 1001
         
-        // Static reference to the module for sending events
+        // Static reference to the module for sending events (when app is running)
         var notificationModule: NotificationListenerModule? = null
         
         // Bank sender patterns to filter notifications
         private val BANK_PATTERNS = listOf(
-            // Common Indian bank sender IDs
             "HDFC", "ICICI", "SBI", "AXIS", "KOTAK", "PNB", "BOB", "IDBI",
             "CITI", "HSBC", "STAN", "YES", "INDUS", "FEDERAL", "RBL",
             "PAYTM", "GPAY", "PHONEPE", "AMAZON", "FLIPKART",
-            // Common transaction keywords
             "debited", "credited", "spent", "payment", "txn", "transaction",
-            "withdrawn", "transfer", "upi", "imps", "neft"
+            "withdrawn", "transfer", "upi", "imps", "neft", "purchase"
         )
         
-        fun isNotificationListenerEnabled(context: android.content.Context): Boolean {
+        // Patterns to extract amount from SMS/notification
+        private val AMOUNT_PATTERNS = listOf(
+            Pattern.compile("(?:rs\\\\.?|inr)\\\\s*([\\\\d,]+(?:\\\\.\\\\d{2})?)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("(?:amount|amt)[:\\\\s]*(?:rs\\\\.?|inr)?\\\\s*([\\\\d,]+(?:\\\\.\\\\d{2})?)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("([\\\\d,]+(?:\\\\.\\\\d{2})?)\\\\s*(?:rs|inr|\\\\/\\\\-)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("(?:debited|credited|spent|paid|received)[:\\\\s]*(?:rs\\\\.?|inr)?\\\\s*([\\\\d,]+(?:\\\\.\\\\d{2})?)", Pattern.CASE_INSENSITIVE)
+        )
+        
+        // Patterns to extract merchant/payee
+        private val MERCHANT_PATTERNS = listOf(
+            Pattern.compile("(?:at|to|from|@)\\\\s+([A-Za-z0-9\\\\s]+?)(?:\\\\s+on|\\\\s+ref|\\\\s+txn|\\\\.|\\\$)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("(?:VPA|UPI)[:\\\\s]*([a-zA-Z0-9._-]+@[a-zA-Z]+)", Pattern.CASE_INSENSITIVE),
+            Pattern.compile("(?:paid to|received from|transfer to|transfer from)\\\\s+([A-Za-z0-9\\\\s]+?)(?:\\\\s+|\\\\.|,|\\\$)", Pattern.CASE_INSENSITIVE)
+        )
+        
+        fun isNotificationListenerEnabled(context: Context): Boolean {
             val cn = ComponentName(context, BudgetNotificationListener::class.java)
             val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
             return flat != null && flat.contains(cn.flattenToString())
         }
+    }
+    
+    private lateinit var sharedPrefs: SharedPreferences
+    
+    override fun onCreate() {
+        super.onCreate()
+        sharedPrefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        createNotificationChannel()
+        Log.d(TAG, "BudgetNotificationListener service created")
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification?) {
@@ -127,19 +164,16 @@ class BudgetNotificationListener : NotificationListenerService() {
             val notification = sbn.notification
             val extras = notification.extras
             
-            // Get notification details
             val packageName = sbn.packageName
             val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString() ?: ""
             val text = extras.getCharSequence(Notification.EXTRA_TEXT)?.toString() ?: ""
             val bigText = extras.getCharSequence(Notification.EXTRA_BIG_TEXT)?.toString() ?: text
             val timestamp = sbn.postTime
             
-            // Use the longer text content
             val content = if (bigText.length > text.length) bigText else text
             
             Log.d(TAG, "Notification from: \$packageName, title: \$title")
             
-            // Check if this looks like a bank/payment notification
             val combinedText = "\$title \$content".lowercase()
             val isRelevant = BANK_PATTERNS.any { pattern -> 
                 combinedText.contains(pattern.lowercase())
@@ -148,21 +182,127 @@ class BudgetNotificationListener : NotificationListenerService() {
             if (isRelevant) {
                 Log.d(TAG, "Relevant notification detected: \$content")
                 
-                // Send to React Native module
-                notificationModule?.sendNotificationEvent(
-                    packageName = packageName,
-                    title = title,
-                    content = content,
-                    timestamp = timestamp
-                )
+                // Extract amount and merchant natively
+                val amount = extractAmount(content)
+                val merchant = extractMerchant(content)
+                
+                if (amount != null && amount > 0) {
+                    Log.d(TAG, "Extracted amount: \$amount, merchant: \$merchant")
+                    
+                    // Store expense for when app opens
+                    storeExpense(amount, merchant, content, timestamp)
+                    
+                    // Show notification to user
+                    showExpenseNotification(amount, merchant)
+                    
+                    // Also try to send to React Native if app is running
+                    notificationModule?.sendNotificationEvent(
+                        packageName = packageName,
+                        title = title,
+                        content = content,
+                        timestamp = timestamp
+                    )
+                } else {
+                    Log.d(TAG, "Could not extract amount from: \$content")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error processing notification", e)
         }
     }
+    
+    private fun extractAmount(text: String): Double? {
+        for (pattern in AMOUNT_PATTERNS) {
+            val matcher = pattern.matcher(text)
+            if (matcher.find()) {
+                val amountStr = matcher.group(1)?.replace(",", "") ?: continue
+                try {
+                    return amountStr.toDouble()
+                } catch (e: NumberFormatException) {
+                    continue
+                }
+            }
+        }
+        return null
+    }
+    
+    private fun extractMerchant(text: String): String {
+        for (pattern in MERCHANT_PATTERNS) {
+            val matcher = pattern.matcher(text)
+            if (matcher.find()) {
+                return matcher.group(1)?.trim() ?: "Unknown"
+            }
+        }
+        return "Unknown"
+    }
+    
+    private fun storeExpense(amount: Double, merchant: String, rawText: String, timestamp: Long) {
+        try {
+            val pendingJson = sharedPrefs.getString(PENDING_EXPENSES_KEY, "[]") ?: "[]"
+            val pendingArray = JSONArray(pendingJson)
+            
+            val expense = JSONObject().apply {
+                put("id", UUID.randomUUID().toString())
+                put("amount", amount)
+                put("merchant", merchant)
+                put("rawText", rawText)
+                put("timestamp", timestamp)
+                put("processed", false)
+            }
+            
+            pendingArray.put(expense)
+            
+            sharedPrefs.edit()
+                .putString(PENDING_EXPENSES_KEY, pendingArray.toString())
+                .apply()
+            
+            Log.d(TAG, "Stored expense: \$amount to \$merchant")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error storing expense", e)
+        }
+    }
+    
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Expense Notifications"
+            val descriptionText = "Notifications for detected expenses"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+    
+    private fun showExpenseNotification(amount: Double, merchant: String) {
+        try {
+            val intent = packageManager.getLaunchIntentForPackage(packageName)
+            val pendingIntent = PendingIntent.getActivity(
+                this, 0, intent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            
+            val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(android.R.drawable.ic_dialog_info)
+                .setContentTitle("💰 New expense detected")
+                .setContentText("₹\${"%.2f".format(amount)} at \$merchant")
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+                .setContentIntent(pendingIntent)
+                .setAutoCancel(true)
+                .build()
+            
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.notify(System.currentTimeMillis().toInt(), notification)
+            
+            Log.d(TAG, "Showed expense notification")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error showing notification", e)
+        }
+    }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification?) {
-        // Not needed for our use case
+        // Not needed
     }
     
     override fun onListenerConnected() {
@@ -186,12 +326,16 @@ class BudgetNotificationListener : NotificationListenerService() {
       const notificationModuleCode = `package ${packageName}
 
 import android.content.ComponentName
+import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import com.facebook.react.bridge.*
 import com.facebook.react.modules.core.DeviceEventManagerModule
+import org.json.JSONArray
+import org.json.JSONObject
 
 class NotificationListenerModule(reactContext: ReactApplicationContext) : 
     ReactContextBaseJavaModule(reactContext), LifecycleEventListener {
@@ -200,13 +344,15 @@ class NotificationListenerModule(reactContext: ReactApplicationContext) :
         private const val TAG = "NotificationListenerModule"
         private const val MODULE_NAME = "NotificationListener"
         private const val NOTIFICATION_RECEIVED_EVENT = "onNotificationReceived"
+        private const val PREFS_NAME = "BudgetOneExpenses"
+        private const val PENDING_EXPENSES_KEY = "pending_expenses"
     }
 
     private var listenerCount = 0
+    private val sharedPrefs: SharedPreferences = reactContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
     init {
         reactContext.addLifecycleEventListener(this)
-        // Register this module with the static service
         BudgetNotificationListener.notificationModule = this
     }
 
@@ -225,9 +371,6 @@ class NotificationListenerModule(reactContext: ReactApplicationContext) :
         Log.d(TAG, "App destroyed")
     }
 
-    /**
-     * Send notification event to JavaScript
-     */
     fun sendNotificationEvent(packageName: String, title: String, content: String, timestamp: Long) {
         if (listenerCount > 0) {
             val params = Arguments.createMap().apply {
@@ -285,6 +428,64 @@ class NotificationListenerModule(reactContext: ReactApplicationContext) :
             promise.resolve(true)
         } catch (e: Exception) {
             promise.reject("ERROR", "Failed to stop listening", e)
+        }
+    }
+    
+    @ReactMethod
+    fun getPendingExpenses(promise: Promise) {
+        try {
+            val pendingJson = sharedPrefs.getString(PENDING_EXPENSES_KEY, "[]") ?: "[]"
+            val pendingArray = JSONArray(pendingJson)
+            
+            val result = Arguments.createArray()
+            for (i in 0 until pendingArray.length()) {
+                val expense = pendingArray.getJSONObject(i)
+                val expenseMap = Arguments.createMap().apply {
+                    putString("id", expense.optString("id"))
+                    putDouble("amount", expense.optDouble("amount"))
+                    putString("merchant", expense.optString("merchant"))
+                    putString("rawText", expense.optString("rawText"))
+                    putDouble("timestamp", expense.optDouble("timestamp"))
+                    putBoolean("processed", expense.optBoolean("processed"))
+                }
+                result.pushMap(expenseMap)
+            }
+            
+            promise.resolve(result)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to get pending expenses", e)
+        }
+    }
+    
+    @ReactMethod
+    fun clearPendingExpenses(promise: Promise) {
+        try {
+            sharedPrefs.edit().putString(PENDING_EXPENSES_KEY, "[]").apply()
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to clear pending expenses", e)
+        }
+    }
+    
+    @ReactMethod
+    fun markExpenseProcessed(id: String, promise: Promise) {
+        try {
+            val pendingJson = sharedPrefs.getString(PENDING_EXPENSES_KEY, "[]") ?: "[]"
+            val pendingArray = JSONArray(pendingJson)
+            val newArray = JSONArray()
+            
+            for (i in 0 until pendingArray.length()) {
+                val expense = pendingArray.getJSONObject(i)
+                if (expense.optString("id") == id) {
+                    expense.put("processed", true)
+                }
+                newArray.put(expense)
+            }
+            
+            sharedPrefs.edit().putString(PENDING_EXPENSES_KEY, newArray.toString()).apply()
+            promise.resolve(true)
+        } catch (e: Exception) {
+            promise.reject("ERROR", "Failed to mark expense processed", e)
         }
     }
 

@@ -20,8 +20,21 @@ interface NotificationListenerModule {
   openSettings(): Promise<boolean>;
   startListening(): Promise<boolean>;
   stopListening(): Promise<boolean>;
+  getPendingExpenses(): Promise<PendingExpense[]>;
+  clearPendingExpenses(): Promise<boolean>;
+  markExpenseProcessed(id: string): Promise<boolean>;
   addListener(eventName: string): void;
   removeListeners(count: number): void;
+}
+
+// Type definition for pending expenses stored by native code
+export interface PendingExpense {
+  id: string;
+  amount: number;
+  merchant: string;
+  rawText: string;
+  timestamp: number;
+  processed: boolean;
 }
 
 /**
@@ -275,6 +288,91 @@ class NotificationListenerService {
    */
   getIsListening(): boolean {
     return this.isListening;
+  }
+
+  /**
+   * Get pending expenses that were detected while app was in background
+   * These are stored by the native NotificationListenerService
+   */
+  async getPendingExpenses(): Promise<PendingExpense[]> {
+    if (!this.isAvailable()) {
+      return [];
+    }
+
+    try {
+      const module = NotificationListener as NotificationListenerModule;
+      const expenses = await module.getPendingExpenses();
+      console.log('[NotificationListenerService] Retrieved pending expenses:', expenses.length);
+      return expenses;
+    } catch (error) {
+      console.error('[NotificationListenerService] Error getting pending expenses:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Process all pending expenses that were detected in background
+   * Creates expense suggestions for each and clears the pending list
+   */
+  async processPendingExpenses(): Promise<number> {
+    if (!this.isAvailable()) {
+      return 0;
+    }
+
+    try {
+      const pendingExpenses = await this.getPendingExpenses();
+      let processed = 0;
+
+      for (const expense of pendingExpenses) {
+        if (expense.processed) continue;
+
+        // Create expense suggestion from pending expense
+        const suggestion = {
+          id: expense.id,
+          amount: expense.amount,
+          dateTime: new Date(expense.timestamp).toISOString(),
+          merchant: expense.merchant !== 'Unknown' ? expense.merchant : null,
+          originalSmsText: expense.rawText,
+          smsSenderId: 'notification',
+          patternId: 'background-detection',
+          createdAt: new Date().toISOString(),
+          status: 'pending' as const,
+        };
+
+        await createExpenseSuggestion(suggestion);
+        
+        // Mark as processed in native storage
+        const module = NotificationListener as NotificationListenerModule;
+        await module.markExpenseProcessed(expense.id);
+        
+        processed++;
+      }
+
+      console.log('[NotificationListenerService] Processed', processed, 'pending expenses');
+      return processed;
+    } catch (error) {
+      console.error('[NotificationListenerService] Error processing pending expenses:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Clear all pending expenses from native storage
+   */
+  async clearPendingExpenses(): Promise<boolean> {
+    if (!this.isAvailable()) {
+      return false;
+    }
+
+    try {
+      const module = NotificationListener as NotificationListenerModule;
+      await module.clearPendingExpenses();
+      console.log('[NotificationListenerService] Cleared pending expenses');
+      return true;
+    } catch (error) {
+      console.error('[NotificationListenerService] Error clearing pending expenses:', error);
+      return false;
+    }
   }
 }
 

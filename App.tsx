@@ -10,6 +10,7 @@ import { AppNavigator } from './src/navigation/AppNavigator';
 import { initDatabase } from './src/services/database';
 import { notificationService } from './src/services/notificationService';
 import { smsService } from './src/services/smsService';
+import { notificationListenerService } from './src/services/notificationListenerService';
 import { useNotificationHandler } from './src/hooks/useNotificationHandler';
 
 function AppContent() {
@@ -33,6 +34,17 @@ function AppContent() {
       const smsStatus = await smsService.checkPermission();
       if (smsStatus === 'granted') {
         await smsService.startListening();
+      }
+
+      // Process any pending expenses detected while app was in background
+      if (notificationListenerService.isAvailable()) {
+        const isEnabled = await notificationListenerService.isEnabled();
+        if (isEnabled) {
+          const processed = await notificationListenerService.processPendingExpenses();
+          if (processed > 0) {
+            console.log('[App] Processed', processed, 'background expenses');
+          }
+        }
       }
 
       setIsReady(true);
